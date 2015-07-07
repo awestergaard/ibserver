@@ -2,13 +2,14 @@ package com.awestergaard.ibserver;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Map;
 
 import org.msgpack.MessagePack;
 import org.msgpack.unpacker.Unpacker;
 
+import com.ib.client.ComboLeg;
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
+import com.ib.client.UnderComp;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -16,8 +17,8 @@ import com.rabbitmq.client.ConsumerCancelledException;
 import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownSignalException;
 
+
 public class App {
-	
 	public static void main(String[] args) {
 		try {
 		    RabbitMQWrapper wrapper = new RabbitMQWrapper();
@@ -25,13 +26,16 @@ public class App {
 		    String host = "localhost";
 		    int port = 7496;
 		    int clientId = 0;
-//		    eClient.eConnect(host, port, clientId);
+		    eClient.eConnect(host, port, clientId);
 			
 			ConnectionFactory factory = new ConnectionFactory();
 	        factory.setHost("localhost");
 	        Connection connection = factory.newConnection();
 	        Channel channel = connection.createChannel();
 	        MessagePack msgpack = new MessagePack();
+	        msgpack.register(ComboLeg.class);
+	        msgpack.register(UnderComp.class);
+	        msgpack.register(Contract.class);
 			channel.queueDeclare("requests", false, false, false, null);
 			QueueingConsumer consumer = new QueueingConsumer(channel);
 			channel.basicConsume("requests", true, consumer);
@@ -45,39 +49,12 @@ public class App {
 	    		switch(methodName) {
 	    			case "reqMktData":
 	    				int id = unpacker.readInt();
-	    				Contract contract = new Contract();
-	    				contract.m_symbol = unpacker.readString();
-	    				contract.m_exchange = unpacker.readString();
-	    				contract.m_expiry = unpacker.readString();
-	    				contract.m_secType = unpacker.readString();
-	    				contract.m_strike = unpacker.readDouble();
-	    				contract.m_right = unpacker.readString();
+	    				Contract contract = unpacker.read(Contract.class);
 	    				String genericTickList = "";
 	    				boolean snapshot = false;
 	    				eClient.reqMktData(id, contract, genericTickList, snapshot);
-	    				
 	    		}
-	    		
-	    		channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
 	    	}
-//		    
-//		    int tickerId = 1;
-//		    Contract contract = new Contract();
-//		    contract.m_symbol = "ES";
-//		    contract.m_exchange = "GLOBEX";
-//		    contract.m_expiry = "201506";
-//		    contract.m_secType = "FUT";
-//		    String genericTickList = "";
-//		    boolean snapshot = false;
-//		    eClient.reqMktData(tickerId, contract, genericTickList, snapshot);
-//		    
-//		    tickerId++;
-//		    contract.m_symbol = "ES";
-//		    contract.m_exchange = "GLOBEX";
-//		    contract.m_expiry = "201506";
-//		    contract.m_secType = "OPT";
-//		    contract.m_strike = 2115.;
-//		    contract.m_right = "C";
 		} catch (ShutdownSignalException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

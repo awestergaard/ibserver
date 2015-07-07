@@ -34,6 +34,7 @@ public class RabbitMQWrapper implements EWrapper {
         factory.setHost("localhost");
         connection = factory.newConnection();
         channel = connection.createChannel();
+        channel.queueDeclare("tickPrice", false, false, false, null);
 		
 		msgpack = new MessagePack();
     }
