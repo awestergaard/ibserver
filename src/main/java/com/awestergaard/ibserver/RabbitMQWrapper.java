@@ -1,9 +1,9 @@
 package com.awestergaard.ibserver;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import com.ib.client.ComboLeg;
 import com.ib.client.CommissionReport;
 import com.ib.client.Contract;
 import com.ib.client.ContractDetails;
@@ -11,17 +11,16 @@ import com.ib.client.EWrapper;
 import com.ib.client.Execution;
 import com.ib.client.Order;
 import com.ib.client.OrderState;
+import com.ib.client.TagValue;
 import com.ib.client.UnderComp;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.QueueingConsumer;
 import com.rabbitmq.client.ShutdownSignalException;
 
 import org.msgpack.MessagePack;
 import org.msgpack.packer.Packer;
-import org.msgpack.unpacker.Unpacker;
 
 public class RabbitMQWrapper implements EWrapper {
 
@@ -34,9 +33,13 @@ public class RabbitMQWrapper implements EWrapper {
         factory.setHost("localhost");
         connection = factory.newConnection();
         channel = connection.createChannel();
-        channel.queueDeclare("tickPrice", false, false, false, null);
 		
 		msgpack = new MessagePack();
+        msgpack.register(ComboLeg.class);
+        msgpack.register(UnderComp.class);
+        msgpack.register(Contract.class);
+        msgpack.register(TagValue.class);
+		msgpack.register(ContractDetails.class);
     }
     
     public void startServingRequests() throws ShutdownSignalException, ConsumerCancelledException, InterruptedException, IOException {
@@ -74,6 +77,7 @@ public class RabbitMQWrapper implements EWrapper {
 			packer.write(price);
 			packer.write(canAutoExecute);
 			channel.basicPublish("", "tickPrice", null, out.toByteArray());
+			System.out.println(" [x] Sent tickPrice");
 		} catch(java.io.IOException e) {
 			System.out.println(e.getMessage());
 		}
@@ -106,7 +110,7 @@ public class RabbitMQWrapper implements EWrapper {
 			packer.write(value);
 			byte[] bytes = out.toByteArray();
 			channel.basicPublish("", "tickString", null, bytes);
-			System.out.println(" [x] Sent '" + bytes.toString() + "'");
+			System.out.println(" [x] Sent tickString");
 		} catch(java.io.IOException e) {
 			System.out.println(e.getMessage());
 		}
@@ -166,8 +170,16 @@ public class RabbitMQWrapper implements EWrapper {
 	}
 
 	public void contractDetails(int reqId, ContractDetails contractDetails) {
-		// TODO Auto-generated method stub
-
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			Packer packer = msgpack.createPacker(out);
+			packer.write(contractDetails);
+			byte[] bytes = out.toByteArray();
+			channel.basicPublish("", "contractDetails", null, bytes);
+			System.out.println(" [x] Sent contractDetails");
+		} catch(java.io.IOException e) {
+			System.out.println(e.getMessage());
+		}
 	}
 
 	public void bondContractDetails(int reqId, ContractDetails contractDetails) {
@@ -221,8 +233,25 @@ public class RabbitMQWrapper implements EWrapper {
 	public void historicalData(int reqId, String date, double open,
 			double high, double low, double close, int volume, int count,
 			double WAP, boolean hasGaps) {
-		// TODO Auto-generated method stub
-
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			Packer packer = msgpack.createPacker(out);
+			packer.write(reqId);
+			packer.write(date);
+			packer.write(open);
+			packer.write(high);
+			packer.write(low);
+			packer.write(close);
+			packer.write(volume);
+			packer.write(count);
+			packer.write(WAP);
+			packer.write(hasGaps);
+			byte[] bytes = out.toByteArray();
+			channel.basicPublish("", "historicalData", null, bytes);
+			System.out.println(" [x] Sent historicalData");
+		} catch(java.io.IOException e) {
+			System.out.println(e.getMessage());
+		}
 	}
 
 	public void scannerParameters(String xml) {

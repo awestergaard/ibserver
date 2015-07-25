@@ -46,13 +46,34 @@ public class App {
 	    		Unpacker unpacker = msgpack.createUnpacker(in);
 	    		String methodName = unpacker.readString();
 	    		System.out.println(" [x] Received '" + methodName + "'");
+	    		Contract contract;
 	    		switch(methodName) {
 	    			case "reqMktData":
 	    				int id = unpacker.readInt();
-	    				Contract contract = unpacker.read(Contract.class);
+	    				contract = unpacker.read(Contract.class);
 	    				String genericTickList = "";
-	    				boolean snapshot = false;
+	    				boolean snapshot = true;
 	    				eClient.reqMktData(id, contract, genericTickList, snapshot);
+	    				System.out.println("reqMktData");
+	    				break;
+	    			case "reqHistoricalData":
+	    				int tickerId = unpacker.readInt();
+	    				contract = unpacker.read(Contract.class);
+	    				String endDateTime = unpacker.readString();
+	    				String durationStr = unpacker.readString();
+	    				String barSizeSetting = unpacker.readString();
+	    				String whatToShow = unpacker.readString();
+	    				int useRTH = unpacker.readInt();
+	    				int formatDate = unpacker.readInt();
+	    				eClient.reqHistoricalData(tickerId, contract, endDateTime, durationStr, barSizeSetting, whatToShow, useRTH, formatDate);
+	    				System.out.println("reqHistoricalData");
+	    				break;
+	    			case "reqContractDetails":
+	    				int reqId = unpacker.readInt();
+    					contract = unpacker.read(Contract.class);
+    					eClient.reqContractDetails(reqId, contract);
+    					System.out.println("reqContractDetails");
+    					break;
 	    		}
 	    	}
 		} catch (ShutdownSignalException e) {
